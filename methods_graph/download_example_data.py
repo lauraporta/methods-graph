@@ -3,7 +3,7 @@ import requests
 from connectedpapers import ConnectedPapersClient
 from connectedpapers.connected_papers_client import GraphResponse
 import dataclasses, json
-
+from pathlib import Path
 
 DEEPFRUITS_PAPER_ID = "9397e7acd062245d37350f5c05faf56e9cfae0d6"
 
@@ -22,12 +22,24 @@ def gather_urls_of_papers(graph: GraphResponse) -> list[str]:
     urls = []
     for node in graph.graph_json.nodes.keys():
         if graph.graph_json.nodes[node].pdfUrls is not None:
-            urls.append(graph.graph_json.nodes[node].url)
+            for url in graph.graph_json.nodes[node].pdfUrls:
+                urls.append(url)
     return urls
+
+def get_dois_of_papers(graph: GraphResponse) -> list[str]:
+    dois = []
+    for node in graph.graph_json.nodes.keys():
+        if graph.graph_json.nodes[node].doi is not None:
+            dois.append(graph.graph_json.nodes[node].doi)
+    return dois
 
 def download_pdf(url: str) -> bytes:
     response = requests.get(url)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print(f"Error: {e}")
+        return b""
     return response.content
 
 def save_pdf(pdf: bytes, path: str) -> None:
@@ -47,6 +59,9 @@ def main() -> int:
     assert graph.graph_json.start_id == DEEPFRUITS_PAPER_ID
     # end of connectedpapers examples
 
+    # make data directory if it does not exist
+    Path("data/graphs").mkdir(parents=True, exist_ok=True)
+    Path("data/PDFs").mkdir(parents=True, exist_ok=True)
 
     save_graph(graph, "data/graphs/deepfruits_graph.json")
     print(f"Graph saved to deepfruits_graph.json")
@@ -54,10 +69,12 @@ def main() -> int:
     urls = gather_urls_of_papers(graph)
     print(f"URLs of papers in the graph: {urls}")
 
-    for url in urls:
+    dois = get_dois_of_papers(graph)
+
+    for i, url in enumerate(urls):
         print(f"Downloading {url}")
         pdf = download_pdf(url)
-        save_pdf(pdf, f"data/PDFs/{url.split('/')[-1]}.pdf")
+        save_pdf(pdf, f"data/PDFs/{dois[i].replace('/', '_')}.pdf")
         print(f"PDF saved to {url.split('/')[-1]}.pdf")
 
     return 0

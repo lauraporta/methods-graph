@@ -6,7 +6,10 @@ readme = "README.md"
 requires-python = ">=3.9.0"
 dynamic = ["version"]
 
-dependencies = []
+dependencies = [
+  "connectedpapers-py",
+  "google-generativeai",
+]
 
 license = {text = "BSD-3-Clause"}
 
